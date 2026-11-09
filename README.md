@@ -13,8 +13,8 @@ Rewritten in Python from a [JS addon](https://huggingface.co/spaces/anemicpathbl
 1. Stremio sends a movie/series ID (IMDB or Kitsu)
 2. The addon queries Cinemeta (or the Kitsu API) to retrieve the anime title — no API key required
 3. It searches for the title on animesub.info using several strategies (title + episode, title only, English and original titles)
-4. It filters results — removes other series (e.g. Boruto when searching for Naruto), openings, endings, and spin-offs
-5. When the user selects subtitles, the addon downloads a ZIP in two steps (session + fresh hash), extracts it, converts ASS → SRT, and serves the file
+4. It filters results — removes other series with a similar name, openings, endings, and spin-offs
+5. When the user selects subtitles, the addon downloads a ZIP in two steps (session + fresh hash), extracts it (picking the file for the requested episode), converts only the formats Stremio cannot play (MicroDVD/TMPlayer → SRT) and serves the file
 
 ## Important notes for users
 
@@ -28,6 +28,7 @@ Rewritten in Python from a [JS addon](https://huggingface.co/spaces/anemicpathbl
 ├── main.py            # Entire addon (FastAPI)
 ├── ASicon.jpg         # Addon icon
 ├── requirements.txt   # Python dependencies
+├── start.bat          # One-click launcher for Windows (local use)
 ├── deploy.sh          # Initial deployment script for Oracle Cloud
 ├── restart.sh         # Restart after updating the code
 ├── render.yaml        # Configuration for Render (alternative)
@@ -45,6 +46,10 @@ python3 main.py
 ```
 
 The addon will start at `http://localhost:8080/manifest.json`.
+
+### Windows (one click)
+
+Double-click `start.bat`. On the first run it creates a virtual environment and installs the dependencies, then starts the server and opens the addon page. Keep the window open while you watch.
 
 ## Quick start (docker)
 You can run this project as a Docker container using the pre-built image. This is the fastest way to deploy the addon without the need to set up a local Python environment.
@@ -132,6 +137,12 @@ The `render.yaml` file is ready. The free plan sleeps after 15 minutes. Set the 
 |------------|----------|-------------|
 | `AS_BASE_URL` | Yes*     | Full deployment URL (with https://). Auto-detected on HF Spaces and locally |
 | `AS_PORT`     | No       | Server port (default: 8080) |
+| `SUBTITLE_OFFSET_MS` | No | Constant shift of all subtitle timings in ms (negative = earlier). Default `0` |
+| `SEARCH_BUDGET_S` | No | Total time limit for searching (default `9`). After it the addon returns what it has found |
+| `SEARCH_BATCH` | No | How many animesub requests run in parallel (default `3`) |
+| `MAX_STRATEGIES` | No | Max. number of search queries per episode (default `80`) |
+| `ALLOW_UNCERTAIN_SEASON` | No | `1` = also show subtitles with the right episode number but unknown season (marked `[sezon niepewny]`). Default `0` |
+| `LOG_LEVEL` | No | `INFO` (default) or `DEBUG` – `DEBUG` logs why each result was rejected |
 
 ## Useful commands (Oracle Cloud)
 
@@ -148,13 +159,45 @@ sudo systemctl status caddy         # Caddy (HTTPS) status
 
 **Security system** — animesub.info binds the download hash to a session. The addon first opens the search page (gets cookies + fresh hash), then downloads the file within the same session.
 
-**ASS → SRT conversion** — Stremio does not support ASS/SSA, so the addon converts it on the server side.
+**Format handling** — SRT, ASS/SSA and VTT are served unchanged and are always listed first. Only MicroDVD and TMPlayer (which Stremio cannot play) are converted to SRT. Every file is re-encoded to UTF-8. Note that ASS is not displayed by every client (e.g. some older mobile or Smart TV apps).
 
-**Result filtering** — the addon checks whether the subtitle title matches the requested anime and removes other series (e.g. Shippuuden when searching for Naruto), openings, endings, and spin-offs.
+**Result filtering** — the addon checks whether the subtitle title matches the requested anime and removes other series with a similar name, openings, endings, and spin-offs.
 
 **Stremio URL format** — Stremio adds a filename to the URL (`/subtitles/series/tt123:1:1/filename=....json`). The addon supports both formats.
 
-**Cache** — search results are stored in memory for 30 minutes.
+**Cache** — search results are stored in memory for 30 minutes. Results from failed requests are never cached and empty results are cached for only 60 seconds.
+
+## Changelog – what was fixed and improved
+
+### Wrong episode / season
+- **Multi-episode ZIP archives** — previously the first file in the archive was used regardless of the episode. Now the file is chosen by the episode number in its name (`- 05`, `E05`, `S01E05`, `ep05v2`; CRC, resolution and codec tags are ignored). If no file matches, the addon returns 404 instead of a wrong episode.
+- **Season matching** — S1 requests no longer accept `2nd Season` / `Final Season` subtitles, and S2+ requests no longer accept plain `ep 05` from season 1. Subtitles without a season are accepted only if the number matches the continuous (absolute) episode number computed from Cinemeta.
+- **Episode parser** — word boundaries (no more matching `ep` inside `Step 3`), episode ranges (`ep01-12`), Roman numerals (`II`, `III`), `Season N`, `Nth Season`, `Final Season`.
+- **Similar series** — a longer title that only starts with the searched title (a different series, a remix, a sequel with its own name) no longer matches. Only an episode/season marker may follow the title (`ep`, `Season`, `Arc`, `II`, ...).
+- **Kitsu** — the season is read from the title (`... Season 2`).
+- **Release matching** — the video file name sent by Stremio is used to rank subtitles whose description mentions the same release group/resolution (`[pasuje do wydania]`).
+
+### Finding more subtitles
+- **Continuous numbering** — long series are searched with the absolute episode number too (e.g. `ep202`, `ep1015`).
+- **Query variants** — with/without a space (`ep 5`, `ep5`), with/without zero padding, with/without hyphens and colons.
+- **Named parts instead of seasons** — a configurable table (`ARC_SERIES`) maps part/arc names (including romanised and English variants) to season numbers.
+- **Seasons that are separate series** — when Cinemeta/TVDB lists a whole separate series as one season of another show, the request is redirected to the matching title (`SERIES_REDIRECTS`).
+- **Alternative titles** — for movies and series titles from Kitsu (e.g. romanised or localised names) are used when the main title finds nothing.
+- **Anime movies** — separate movie mode: `movie`, `film`, `gekijouban` in a title are no longer rejected.
+
+### Formats and timing
+- SRT, ASS/SSA and VTT are always listed first.
+- Only formats Stremio cannot play (MicroDVD, TMPlayer) are converted to SRT; everything else keeps its original format.
+- Optional constant time shift (`SUBTITLE_OFFSET_MS`), applied without changing the format.
+
+### Reliability
+- One retry on network errors / HTTP 5xx; failed requests are not cached (a single hiccup used to block a title for 30 minutes).
+- Requests run in parallel batches with an overall time limit, so Stremio does not time out on slow searches.
+- `LOG_LEVEL=DEBUG` shows why a result was rejected.
+
+### Known limitations
+- The addon cannot synchronise subtitles with the video itself – timing can still differ between releases.
+- Arc/season tables are written by hand for the series listed above; other series with named parts may need an entry in `ARC_SERIES` or `SERIES_REDIRECTS`.
 
 ## AI Notice
 
