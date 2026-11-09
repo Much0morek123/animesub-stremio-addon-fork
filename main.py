@@ -88,22 +88,28 @@ app.add_middleware(
 )
 
 MANIFEST = {
-    "id": "org.stremio.addon.info.animesub",
+    # Własne ID/nazwa dla forka: AS_ADDON_ID, AS_ADDON_NAME (inaczej Stremio uzna dodatek
+    # za tę samą instalację co oryginał o identycznym ID).
+    "id": os.environ.get("AS_ADDON_ID", "org.stremio.addon.info.animesub"),
     "version": app_version,
-    "name": "AnimeSub.info Subtitles",
+    "name": os.environ.get("AS_ADDON_NAME", "AnimeSub.info Subtitles"),
     "description": "Dodatek wyszukuje polskie napisy do anime z animesub.info",
     "logo": f"{BASE_URL}/static/icon.jpg",
     "resources": ["subtitles"],
     "types": ["movie", "series", "anime"],
     "idPrefixes": ["tt", "kitsu"],
-    "contactEmail": "piotrek1488@gmail.com",
     "catalogs": [],
     "behaviorHints": {"configurable": False, "configurationRequired": False},
-    "stremioAddonsConfig": {
-        "issuer": "https://stremio-addons.net",
-        "signature": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..aSYEHxT9ElzC3NMzieMURQ.NBGSJWCtIlnD50iQgc5N7MSXn10fJWNsHQzQGFrdLmiyaqFpNUeqLVr9m5YHMXBaZEZwGV5_jvvGxldsB_RnJVrhnxm5xQp5zN_JnXzr6q6USTNHIX540TcAJOR9yv4z.0xbyk_xjDoiR2uzvuOUkbg"
-    }
 }
+
+# Opcjonalne, własne dane publikacji (np. na stremio-addons.net) – tylko z env:
+if os.environ.get("AS_CONTACT_EMAIL"):
+    MANIFEST["contactEmail"] = os.environ["AS_CONTACT_EMAIL"]
+if os.environ.get("AS_STREMIO_ADDONS_SIGNATURE"):
+    MANIFEST["stremioAddonsConfig"] = {
+        "issuer": "https://stremio-addons.net",
+        "signature": os.environ["AS_STREMIO_ADDONS_SIGNATURE"],
+    }
 
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
