@@ -28,7 +28,6 @@ Rewritten in Python from a [JS addon](https://huggingface.co/spaces/anemicpathbl
 ├── main.py            # Entire addon (FastAPI)
 ├── ASicon.jpg         # Addon icon
 ├── requirements.txt   # Python dependencies
-├── start.bat          # One-click launcher for Windows (local use)
 ├── deploy.sh          # Initial deployment script for Oracle Cloud
 ├── restart.sh         # Restart after updating the code
 ├── render.yaml        # Configuration for Render (alternative)
