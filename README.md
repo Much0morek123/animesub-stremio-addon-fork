@@ -47,10 +47,6 @@ python3 main.py
 
 The addon will start at `http://localhost:8080/manifest.json`.
 
-### Windows (one click)
-
-Double-click `start.bat`. On the first run it creates a virtual environment and installs the dependencies, then starts the server and opens the addon page. Keep the window open while you watch.
-
 ## Quick start (docker)
 You can run this project as a Docker container using the pre-built image. This is the fastest way to deploy the addon without the need to set up a local Python environment.
 
