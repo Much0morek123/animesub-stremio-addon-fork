@@ -28,7 +28,6 @@ Przepisany na Python z [addonu JS](https://huggingface.co/spaces/anemicpathbling
 ├── main.py            # Cały addon (FastAPI)
 ├── ASicon.jpg         # Ikona addonu
 ├── requirements.txt   # Zależności Python
-├── start.bat          # Uruchomienie dwuklikiem na Windowsie (lokalnie)
 ├── deploy.sh          # Skrypt pierwszego deployu na Oracle Cloud
 ├── restart.sh         # Restart po aktualizacji kodu
 ├── render.yaml        # Konfiguracja dla Render (alternatywa)
