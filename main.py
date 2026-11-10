@@ -66,6 +66,8 @@ SEARCH_BATCH = int(os.environ.get("SEARCH_BATCH", "3"))
 MAX_STRATEGIES = int(os.environ.get("MAX_STRATEGIES", "80"))
 
 SUBTITLE_OFFSET_MS = int(os.environ.get("SUBTITLE_OFFSET_MS", "0"))
+# Port z Bazarra (animesubinfo.py): przy remisie wyżej napisy w formacie Advanced SSA
+PREFER_ADVANCED_SSA = os.environ.get("PREFER_ADVANCED_SSA", "0") == "1"
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
 log = logging.getLogger("animesub")
@@ -504,7 +506,8 @@ def _parse_search_results(html: str) -> list[dict]:
 
             # Opis
             desc_cell = dl_row.find("td", class_="KNap", attrs={"align": "left"})
-            description = desc_cell.get_text(strip=True) if desc_cell else ""
+            # separator "\n" zachowuje podział na linie – bez niego pole "Synchro:" zlewa się z resztą opisu
+            description = desc_cell.get_text("\n", strip=True) if desc_cell else ""
 
             ep_info = _parse_episode_info(title_org, title_eng, title_alt)
 
@@ -515,6 +518,7 @@ def _parse_search_results(html: str) -> list[dict]:
                 "format_type": format_type,
                 "download_count": download_count,
                 "description": description,
+                "release_groups": _parse_release_groups(description),
                 **ep_info,
             })
         except Exception as e:
@@ -1809,6 +1813,30 @@ def _release_info(filename: Optional[str]) -> dict:
     return {"group": group, "res": res.group(1) if res else None}
 
 
+_SYNCHRO_RE = re.compile(r"Synchro[:\s]+([^\n<]+)", re.I)
+
+
+def _parse_release_groups(description: str) -> list[str]:
+    """
+    Wyciąga grupy wydawnicze z linii "Synchro:" w opisie napisów (port z Bazarra).
+    Obsługuje: "Synchro: [SubsPlease]", "Synchro: SubsPlease, Erai-raws (CR)", "Synchro do [Erai-raws]".
+    """
+    m = _SYNCHRO_RE.search(description or "")
+    if not m:
+        return []
+    raw = re.sub(r"^(?:do|dla|for|by)\s+", "", m.group(1).strip(), flags=re.I)
+    groups = re.findall(r"\[([^\]]+)\]", raw)
+    cleaned = re.sub(r"\[([^\]]+)\]", r"\1", raw)
+    cleaned = re.sub(r"\([^)]*\)", "", cleaned)
+    groups += [p.strip() for p in cleaned.split(",") if len(p.strip()) > 2]
+    out: list[str] = []
+    for g in groups:
+        g = g.strip()
+        if g and g.lower() not in (x.lower() for x in out):
+            out.append(g)
+    return out
+
+
 def release_bonus(sub: dict, release: dict) -> int:
     """Premia za napisy, które w opisie wspominają to samo wydanie co plik wideo."""
     if not release:
@@ -1818,7 +1846,9 @@ def release_bonus(sub: dict, release: dict) -> int:
     ).lower()
     bonus = 0
     group = (release.get("group") or "").lower()
-    if group and len(group) >= 3 and group in text:
+    if group and group in {g.lower() for g in sub.get("release_groups") or []}:
+        bonus += 3  # grupa z pola "Synchro:" zgadza się dokładnie z grupą pliku wideo
+    elif group and len(group) >= 3 and group in text:
         bonus += 2
     if release.get("res") and release["res"] in text:
         bonus += 1
@@ -1828,6 +1858,13 @@ def release_bonus(sub: dict, release: dict) -> int:
 # ══════════════════════════════════════════════════════════════
 #  GŁÓWNY ENDPOINT NAPISÓW DLA STREMIO
 # ══════════════════════════════════════════════════════════════
+
+def ssa_preference(sub: dict) -> int:
+    """Remis rozstrzyga Advanced SSA (jak w Bazarze) – tylko gdy PREFER_ADVANCED_SSA=1."""
+    if PREFER_ADVANCED_SSA and "advanced ssa" in (sub.get("format_type") or "").lower():
+        return 1
+    return 0
+
 
 def format_priority(format_text: str) -> int:
     """
@@ -1963,7 +2000,7 @@ async def subtitles_handler(content_type: str, content_id: str, filename: Option
         all_subs.sort(
             key=lambda s: (
                 format_priority(s.get("format_type", "")),
-                s.get("score", 0), s.get("bonus", 0), s.get("download_count", 0),
+                s.get("score", 0), s.get("bonus", 0), ssa_preference(s), s.get("download_count", 0),
             ),
             reverse=True,
         )

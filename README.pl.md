@@ -142,6 +142,7 @@ Plik `render.yaml` jest gotowy. Darmowy plan usypia po 15 min. Ustaw zmienną `A
 | `SEARCH_BATCH` | Nie | Ile zapytań do animesub idzie równolegle (domyślnie `3`) |
 | `MAX_STRATEGIES` | Nie | Maks. liczba zapytań na odcinek (domyślnie `80`) |
 | `ALLOW_UNCERTAIN_SEASON` | Nie | `1` = pokazuj też napisy z dobrym numerem odcinka, ale nieznanym sezonem (z oznaczeniem `[sezon niepewny]`). Domyślnie `0` |
+| `PREFER_ADVANCED_SSA` | Nie | `1` = przy remisie wyżej napisy w formacie Advanced SSA (jak w Bazarze). Domyślnie `0`, bo nie każdy klient wyświetla ASS |
 | `LOG_LEVEL` | Nie | `INFO` (domyślnie) lub `DEBUG` – `DEBUG` loguje, dlaczego dany wynik został odrzucony |
 
 ## Przydatne komendy (Oracle Cloud)
@@ -175,7 +176,7 @@ sudo systemctl status caddy         # status Caddy (HTTPS)
 - **Parser odcinków** — granice słów (koniec z `ep` w środku `Step 3`), zakresy odcinków (`ep01-12`), cyfry rzymskie (`II`, `III`), `Season N`, `Nth Season`, `Final Season`.
 - **Podobne serie** — dłuższy tytuł, który tylko zaczyna się od szukanego (inna seria, remix, kontynuacja z własną nazwą), nie pasuje już do wyszukiwania. Po tytule może wystąpić tylko znacznik odcinka/sezonu (`ep`, `Season`, `Arc`, `II`, ...).
 - **Kitsu** — sezon jest odczytywany z tytułu (`... Season 2`).
-- **Dopasowanie do wydania** — nazwa pliku wideo przesyłana przez Stremio służy do podniesienia napisów, w których opisie jest ta sama grupa lub rozdzielczość (`[pasuje do wydania]`).
+- **Dopasowanie do wydania** — nazwa pliku wideo przesyłana przez Stremio służy do podniesienia napisów, w których opisie jest ta sama grupa lub rozdzielczość (`[pasuje do wydania]`). Lista grup z linii `Synchro:` w opisie (port z providera animesub.info z Bazarra) daje dokładnemu dopasowaniu większą premię niż zwykłe trafienie w tekście.
 
 ### Więcej znalezionych napisów
 - **Numeracja ciągła** — długie serie są szukane także po numerze absolutnym odcinka (np. `ep202`, `ep1015`).

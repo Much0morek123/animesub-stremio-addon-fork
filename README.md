@@ -142,6 +142,7 @@ The `render.yaml` file is ready. The free plan sleeps after 15 minutes. Set the 
 | `SEARCH_BATCH` | No | How many animesub requests run in parallel (default `3`) |
 | `MAX_STRATEGIES` | No | Max. number of search queries per episode (default `80`) |
 | `ALLOW_UNCERTAIN_SEASON` | No | `1` = also show subtitles with the right episode number but unknown season (marked `[sezon niepewny]`). Default `0` |
+| `PREFER_ADVANCED_SSA` | No | `1` = on a tie, rank Advanced SSA subtitles higher (as Bazarr does). Default `0`, because not every client renders ASS |
 | `LOG_LEVEL` | No | `INFO` (default) or `DEBUG` – `DEBUG` logs why each result was rejected |
 
 ## Useful commands (Oracle Cloud)
@@ -175,7 +176,7 @@ sudo systemctl status caddy         # Caddy (HTTPS) status
 - **Episode parser** — word boundaries (no more matching `ep` inside `Step 3`), episode ranges (`ep01-12`), Roman numerals (`II`, `III`), `Season N`, `Nth Season`, `Final Season`.
 - **Similar series** — a longer title that only starts with the searched title (a different series, a remix, a sequel with its own name) no longer matches. Only an episode/season marker may follow the title (`ep`, `Season`, `Arc`, `II`, ...).
 - **Kitsu** — the season is read from the title (`... Season 2`).
-- **Release matching** — the video file name sent by Stremio is used to rank subtitles whose description mentions the same release group/resolution (`[pasuje do wydania]`).
+- **Release matching** — the video file name sent by Stremio is used to rank subtitles whose description mentions the same release group/resolution (`[pasuje do wydania]`). The group list from the description's `Synchro:` line (ported from Bazarr's animesub.info provider) gives an exact match a stronger bonus than a plain text hit.
 
 ### Finding more subtitles
 - **Continuous numbering** — long series are searched with the absolute episode number too (e.g. `ep202`, `ep1015`).
