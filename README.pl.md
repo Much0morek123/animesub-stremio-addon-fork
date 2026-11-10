@@ -47,10 +47,6 @@ python3 main.py
 
 Addon wystartuje na `http://localhost:8080/manifest.json`.
 
-### Windows (jeden klik)
-
-Kliknij dwukrotnie `start.bat`. Przy pierwszym uruchomieniu skrypt tworzy środowisko wirtualne i instaluje zależności, potem startuje serwer i otwiera stronę dodatku. Okno musi zostać otwarte podczas oglądania.
-
 ## Szybki start (docker)
 Możesz uruchomić ten projekt jako kontener Docker, korzystając z gotowego obrazu. Jest to najszybszy sposób na wdrożenie addonu bez konieczności konfigurowania lokalnego środowiska Pythona.
 
